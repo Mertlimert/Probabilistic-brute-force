@@ -1,17 +1,23 @@
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.xy.StandardXYBarPainter;
+import org.jfree.chart.renderer.xy.XYBarRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
+import org.jfree.data.statistics.HistogramDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
@@ -22,7 +28,7 @@ import javax.swing.*;
 class Test {
 
     public static void main(String[] args) {
-        int numberOfRuns = 50;
+        int numberOfRuns = 1000;
         int bitStringLength = 20;
         double[] prob = generateRandomProbabilites(bitStringLength);
         ProbBruteSim sim = new ProbBruteSim(prob);
@@ -52,7 +58,7 @@ class Test {
             long start2 = System.currentTimeMillis();
             int[] sortedguess = sim.generateGuess(sorted, acctarget);
             long end2 = System.currentTimeMillis();
-            double timeTaken2 = (end2 - start2) / 1000.0;
+            double timeTaken2 = (end2 - start2);
             list.add(sim.attemps);
             times[i] = timeTaken2;
             // unsorted
@@ -60,7 +66,7 @@ class Test {
             long start3 = System.currentTimeMillis();
             int[] unsortedguess = sim.generateNormalGuess(unsorted, acctarget);
             long end3 = System.currentTimeMillis();
-            double timeTaken3 = (end3 - start3) / 1000.0;
+            double timeTaken3 = (end3 - start3);
             timesunsorted[i] = timeTaken3;
             list1.add(sim.attemps);
 
@@ -109,9 +115,83 @@ class Test {
 
         DefaultCategoryDataset barDataset = new DefaultCategoryDataset();
         for (int i = 0; i < times.length; i++) {
-            barDataset.addValue(times[i] * 1000, "Probabilistic", "Run " + (i + 1));
-            barDataset.addValue(timesunsorted[i] * 1000, "Normal", "Run " + (i + 1));
+            barDataset.addValue(times[i], "Probabilistic", "Run " + (i + 1));
+            barDataset.addValue(timesunsorted[i], "Normal", "Run " + (i + 1));
         }
+
+// Create histogram datasets
+        int numBins = 20;
+        HistogramDataset probDataset = new HistogramDataset();
+        HistogramDataset normDataset = new HistogramDataset();
+        probDataset.addSeries("Probabilistic Runtime", times, numBins);
+        normDataset.addSeries("Normal Runtime", timesunsorted, numBins);
+
+// Create charts
+        JFreeChart probHistogram = ChartFactory.createHistogram(
+                "Probabilistic Search Runtime Distribution",
+                "Runtime (milliseconds)",
+                "Frequency",
+                probDataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+        JFreeChart normHistogram = ChartFactory.createHistogram(
+                "Normal Search Runtime Distribution",
+                "Runtime (milliseconds)",
+                "Frequency",
+                normDataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+// Customize plots
+        XYPlot probPlot = (XYPlot) probHistogram.getPlot();
+        probPlot.setBackgroundPaint(Color.WHITE);
+        probPlot.setRangeGridlinePaint(Color.GRAY);
+        probPlot.setDomainGridlinePaint(Color.GRAY);
+
+        XYPlot normPlot = (XYPlot) normHistogram.getPlot();
+        normPlot.setBackgroundPaint(Color.WHITE);
+        normPlot.setRangeGridlinePaint(Color.GRAY);
+        normPlot.setDomainGridlinePaint(Color.GRAY);
+
+// Customize renderers
+        XYBarRenderer probRenderer = (XYBarRenderer) probPlot.getRenderer();
+        probRenderer.setSeriesPaint(0, Color.RED);
+        probRenderer.setBarPainter(new StandardXYBarPainter());
+        probRenderer.setDrawBarOutline(true);
+        probRenderer.setSeriesOutlinePaint(0, Color.BLACK);
+
+        XYBarRenderer normRenderer = (XYBarRenderer) normPlot.getRenderer();
+        normRenderer.setSeriesPaint(0, Color.BLUE);
+        normRenderer.setBarPainter(new StandardXYBarPainter());
+        normRenderer.setDrawBarOutline(true);
+        normRenderer.setSeriesOutlinePaint(0, Color.BLACK);
+
+// Create frame with grid layout
+        JFrame histFrame = new JFrame("Runtime Distributions");
+        histFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        histFrame.setLayout(new GridLayout(2, 1, 0, 10));
+
+// Add chart panels
+        ChartPanel probChartPanel = new ChartPanel(probHistogram);
+        ChartPanel normChartPanel = new ChartPanel(normHistogram);
+        probChartPanel.setPreferredSize(new Dimension(800, 300));
+        normChartPanel.setPreferredSize(new Dimension(800, 300));
+
+        histFrame.add(probChartPanel);
+        histFrame.add(normChartPanel);
+
+        histFrame.pack();
+        histFrame.setLocationRelativeTo(null);
+        histFrame.setVisible(true);
+
+        // BarChart and XYline
 
         JFreeChart barChart = ChartFactory.createBarChart(
                 "Algorithm Runtime Comparison",
@@ -144,8 +224,8 @@ class Test {
         XYSeries unsortedSeries = new XYSeries("Normal");
 
         for (int i = 0; i < times.length; i++) {
-            sortedSeries.add(i + 1, times[i] * 1000);
-            unsortedSeries.add(i + 1, timesunsorted[i] * 1000);
+            sortedSeries.add(i + 1, times[i]);
+            unsortedSeries.add(i + 1, timesunsorted[i]);
         }
 
         lineDataset.addSeries(sortedSeries);
@@ -229,6 +309,152 @@ class Test {
 
         frame.pack();
         frame.setVisible(true);
+
+        // New Frame
+
+        // Create new frame and chart for sorted times
+        JFrame sortedTimesFrame = new JFrame("Sorted Times Comparison");
+        sortedTimesFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+// Sort the times arrays
+        double[] sortedProbTimes = times.clone();
+        double[] sortedNormalTimes = timesunsorted.clone();
+        Arrays.sort(sortedProbTimes);
+        Arrays.sort(sortedNormalTimes);
+
+// Create dataset for sorted times
+        XYSeriesCollection sortedDataset = new XYSeriesCollection();
+        XYSeries sortedProbSeries = new XYSeries("Probabilistic (Sorted)");
+        XYSeries sortedNormalSeries = new XYSeries("Normal (Sorted)");
+
+        for (int i = 0; i < times.length; i++) {
+            sortedProbSeries.add(i + 1, sortedProbTimes[i]);
+            sortedNormalSeries.add(i + 1, sortedNormalTimes[i]);
+        }
+
+        sortedDataset.addSeries(sortedProbSeries);
+        sortedDataset.addSeries(sortedNormalSeries);
+
+// Create the chart
+        JFreeChart sortedChart = ChartFactory.createXYLineChart(
+                "Sorted Runtime Comparison",
+                "Run Number",
+                "Time (milliseconds)",
+                sortedDataset,
+                PlotOrientation.VERTICAL,
+                true,
+                true,
+                false
+        );
+
+// Customize the plot
+        XYPlot sortedPlot = sortedChart.getXYPlot();
+        XYLineAndShapeRenderer sortedRenderer = new XYLineAndShapeRenderer();
+        sortedRenderer.setSeriesPaint(0, Color.RED);
+        sortedRenderer.setSeriesPaint(1, Color.BLUE);
+        sortedRenderer.setSeriesStroke(0, new BasicStroke(2.0f));
+        sortedRenderer.setSeriesStroke(1, new BasicStroke(2.0f));
+        sortedRenderer.setSeriesShapesVisible(0, true);
+        sortedRenderer.setSeriesShapesVisible(1, true);
+
+        sortedPlot.setRenderer(sortedRenderer);
+        sortedPlot.setBackgroundPaint(Color.WHITE);
+        sortedPlot.setRangeGridlinePaint(Color.GRAY);
+        sortedPlot.setDomainGridlinePaint(Color.GRAY);
+
+// Configure axes
+        NumberAxis sortedDomainAxis = (NumberAxis) sortedPlot.getDomainAxis();
+        sortedDomainAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+
+        NumberAxis sortedRangeAxis = (NumberAxis) sortedPlot.getRangeAxis();
+        sortedRangeAxis.setAutoRangeIncludesZero(true);
+
+// Create chart panel and add to frame
+        ChartPanel sortedChartPanel = new ChartPanel(sortedChart);
+        sortedChartPanel.setPreferredSize(new Dimension(800, 400));
+
+// Add statistics panel for sorted times
+        sortedStatsPanel = new JPanel(new GridLayout(2, 1));
+        sortedStatsPanel.setBorder(BorderFactory.createTitledBorder("Sorted Times Statistics"));
+
+// Create text areas to display sorted times
+        JTextArea probTimesArea = new JTextArea(3, 40);
+        probTimesArea.setEditable(false);
+        probTimesArea.setText("Probabilistic Sorted Times (ms):\n" +
+                Arrays.stream(sortedProbTimes)
+                        .mapToObj(t -> String.format("%.3f", t * 1000))
+                        .collect(Collectors.joining(", ")));
+
+        JTextArea normalTimesArea = new JTextArea(3, 40);
+        normalTimesArea.setEditable(false);
+        normalTimesArea.setText("Normal Sorted Times (ms):\n" +
+                Arrays.stream(sortedNormalTimes)
+                        .mapToObj(t -> String.format("%.3f", t * 1000))
+                        .collect(Collectors.joining(", ")));
+
+        sortedStatsPanel.add(new JScrollPane(probTimesArea));
+        sortedStatsPanel.add(new JScrollPane(normalTimesArea));
+
+// Add components to frame
+        sortedTimesFrame.setLayout(new BorderLayout());
+        sortedTimesFrame.add(sortedChartPanel, BorderLayout.CENTER);
+        sortedTimesFrame.add(sortedStatsPanel, BorderLayout.SOUTH);
+
+        sortedTimesFrame.pack();
+        sortedTimesFrame.setLocationRelativeTo(null);
+        sortedTimesFrame.setVisible(true);
+
+        // Pie Chart
+
+        // Count runs where normal search was faster
+        int normalFasterCount = 0;
+        for (int i = 0; i < numberOfRuns; i++) {
+            if (timesunsorted[i] < times[i]) {
+                normalFasterCount++;
+            }
+        }
+
+// Create dataset for pie chart
+        DefaultPieDataset pieDataset = new DefaultPieDataset();
+        pieDataset.setValue("Normal Faster", normalFasterCount);
+        pieDataset.setValue("Probabilistic Faster", numberOfRuns - normalFasterCount);
+
+// Create pie chart
+        JFreeChart pieChart = ChartFactory.createPieChart(
+                "Runtime Comparison Distribution",
+                pieDataset,
+                true,
+                true,
+                false
+        );
+
+// Customize appearance
+        PiePlot plot = (PiePlot) pieChart.getPlot();
+        plot.setSectionPaint("Normal Faster %", Color.BLUE);
+        plot.setSectionPaint("Probabilistic Faster %", Color.RED);
+        plot.setBackgroundPaint(Color.WHITE);
+
+// Create new frame
+        JFrame pieFrame = new JFrame("Runtime Distribution");
+        pieFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+// Add chart to frame
+        ChartPanel pieChartPanel = new ChartPanel(pieChart);
+        pieChartPanel.setPreferredSize(new Dimension(500, 400));
+        pieFrame.add(pieChartPanel);
+
+// Add summary label
+        JLabel summaryLabel = new JLabel(String.format(
+                "Normal search was faster in %d out of %d runs (%.1f%%)",
+                normalFasterCount, numberOfRuns,
+                (normalFasterCount * 100.0 / numberOfRuns)
+        ));
+        summaryLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
+        pieFrame.add(summaryLabel, BorderLayout.SOUTH);
+
+        pieFrame.pack();
+        pieFrame.setLocationRelativeTo(null);
+        pieFrame.setVisible(true);
 
         // Print Max,Min and Averages
 
